@@ -33,6 +33,19 @@ def validate():
         print("you're not shy honey🙃")
         return False
 
+def inputToDict() -> dict:
+    dic = {}
+    while(True):
+        key = input('please input a key :\n')
+        val = input('please input a value :\n')
+        dic.update({key : val})
+
+        x = input('wanna add more ?\n')
+        if (x == 'no' or x == 'exit'):
+            break
+        
+    return dic
+
 class ShyDB():
     def __init__(self):
         self.DB = {}
@@ -50,16 +63,8 @@ class ShyDB():
 
         createEntity(self, tableName, data)
     
-
-
-# factory method
-class ShyQuery():
-    def __init__(self) -> None:
-        pass
-        
-
-    def validateQuery(self, database:ShyDB, tableName:str, id:str) -> list:
-        for entity in database.DB[tableName]:
+    def validateQuery(self, tableName:str, id:str) -> list:
+        for entity in self.DB[tableName]:
             # print(entity)
             if( id == entity['_id']):
                 return [True,entity]
@@ -68,78 +73,115 @@ class ShyQuery():
         print('no such data exist 😑')
         return [False, None]
 
-    def deleteEntity(self, database:ShyDB, tableName:str, id:str) -> bool:
-        validEntity = self.validateQuery(database,tableName, id)
+    def deleteEntity(self, tableName:str, id:str) -> bool:
+        validEntity = self.validateQuery(self,tableName, id)
         if(validEntity[0]):
-            database.DB[tableName].remove(validEntity[1])
+            self.DB[tableName].remove(validEntity[1])
             # for updateEntity() => (i know its not good practice for methods to depend each other)
             return True
             
-    def updateEntity(self, database:ShyDB, tableName:str, id:str, query:dict) -> None:
+    def updateEntity(self, tableName:str, id:str, query:dict) -> None:
         # UPDATE can be combination of DELETE and CREATE 
-        deletedEntity = self.deleteEntity(database, tableName, id)
+        deletedEntity = self.deleteEntity(self, tableName, id)
         if(deletedEntity):
-            createEntity(database, tableName, query)
+            createEntity(self, tableName, query)
 
             
     
-    def getAll(self, database:ShyDB, tableName:str) -> list:
+    def getAll(self, tableName:str) -> list:
         # returns a list
-        return database.DB[tableName]
+        return self.DB[tableName] 
 
 class Page():
     def __init__(self, title, func = []):
         self.func = func
         self.title = title
 
-    def render(self):
-        print("you are in {} Page 😁".format(self.title))
+    def render(self, nav:str):
+        print("\n\nyou are in {} Page 😁\n".format(self.title))
+        print(nav, '\n')
+
         for i in self.func : 
             print('- ',i)
         # for chaining methods
+        # print('\n\n', self, '\n\n')
         return self
+        
     
-    def showAll(self):
+    def showItems(self):
         return self
     
 
 class GeoPage(Page):
-    def __init__(self, title, func = [], items = []):
+    def __init__(self, title, func = []):
         super().__init__(title, func)
-        self.items = items
 
     
-    def showAll(self):
+    def showItems(self, db:list):
         print("=" * 20)
-        for i in self.items:
-            print(i)
+        for i in db:
+            print(i['name'])
 
-# like a DO-WHILE where DO => __init__ & WHILE => goto()
-class Renderer():
-    def __init__(self, page:Page) -> None:
-        self.page = page.render().showAll()
-        self.valid = False
+class Navigator():
+    def __init__(self) -> None:
+        self.nav = []
+    
+    def addNav(self, endPoint:str) -> list:
+        self.nav.append(endPoint)
 
-    def goto(self, page) -> bool:
-        self.userInput = input('choose one of the above :')
+        self.showNav()
 
-        if (self.userInput in self.page.func and self.page.title == 'main'):
-            if self.userInput == 'exit':
-                # exit program
-                return True
-            page.render().showAll()
+    def delNav(self) -> str:
+        return self.nav.pop()
+    
+    def showNav(self) -> list:
+        return self.nav
+    
+    def printNav(self,beginning:str)-> str:
+        str = beginning
+        for i in self.nav:
+            str += f' -> {i}'
+        
+        return str
+# for adding new logics/methods (open/close)
+class Logic():
+    def __init__(self) -> None:
+        self.methods = {}
 
-        if(self.userInput in page.func and page.title == 'sub'):
-            if self.userInput == 'back':
-                self.valid = False
-                self.page.render().showAll()
-            
-            if self.userInput == 'add':
-                token = validate()
-                return token
+    def augment(self, data:dict) -> dict :
+        if (not data):
+            return
+        
+        # get first element of dict
+        key = [*data.keys()][0]
+        value = [*data.values()][0]
+        def check():
+            pass
+        if (not type(value) is type(check)):
+            print('value of dict must be of type function !')
+            return
+        
+        # insert new method to self.methods
+        self.methods.update({key : value})
+        return self.methods
+
+    def call(self, name:str, opt:dict = {}) -> None:
+
+        func = self.methods[name]
+        
+        if (not func):
+            print('no such method exist')
+            return
+        
+        func(opt)
+
+    def remove(self, name:str) -> None:
+        if (not self.methods[name]):
+            print('no such method exist')
+            return
+        self.methods.pop(name)
 
 # ================ create & insert data to DB ===================
-q = ShyQuery()
 db = ShyDB()
 db.createSchema('street',{'name' : str, 'city' : str})
 db.createTable('street')
@@ -148,59 +190,66 @@ db.createTable('city')
 db.addEntity('city', {'name':'karaj', 'country':'IR'})
 db.addEntity('city', {'name':'tehran', 'country':'IR'})
 db.addEntity('city', {'name':'texas', 'country':'US'})
-db.addEntity('street', {'name':'flk-13', 'country':'krj'})
-db.addEntity('street', {'name':'hemmat', 'country':'teh'})
-db.addEntity('street', {'name':'us-street', 'country':'LA'})
+db.addEntity('street', {'name':'flk-13', 'city':'krj'})
+db.addEntity('street', {'name':'hemmat', 'city':'teh'})
+db.addEntity('street', {'name':'us-street', 'city':'LA'})
 # ===============================================================
 
-# Global variables
+# ================ create & insert methods ===================
+def add(opt:dict) -> None:
+    dic = inputToDict()
+    tableName = opt['navbar'].showNav()[-1]
+    opt['database'].addEntity(tableName, dic)
+    data = opt['database'].getAll(tableName)
+    opt['page'].render(opt['navbar'].printNav('Home')).showItems(data)
 
-city = q.getAll(db,'city')
-street = q.getAll(db,'street')
+def show(opt:dict):
+    print(opt)
+    opt['navbar'].addNav(opt['input'])
+    tableName = opt['navbar'].showNav()[-1]
+    data = opt['database'].getAll(tableName)
+    opt['page'].render(opt['navbar'].printNav('home')).showItems(data)
+
+def back(opt:dict):
+    opt['navbar'].delNav()
+    opt['page'].render(opt['navbar'].printNav('Home'))
+
+logic = Logic()
+logic.augment({'add' : add})
+logic.augment({'city' : show})
+logic.augment({'street' : show})
+logic.augment({'back' : back})
+
+# ===============================================================
+
+''' Global variables '''
 
 main = Page('main',[*db.DB.keys(), "exit"])
+sub = GeoPage('sub', ['add','back'])
+nav = Navigator()
 
-sub = GeoPage('sub', ['add','back'],[])
-
-r = Renderer(main)
+# nav.addNav('street')
+main.render(nav.printNav('homy')).showItems()
 
 while(True):
-    done = r.goto(sub)
-    if (done):
+    x = input('choose one of the above :👀\n')
+    if x == 'exit':
         break
 
-
-# while(True):
-
-#     x = input("choose one of the above: \n")
-    
-#     if (x == "exit"):
-#         break
-    
-#     # I know its bad code but at least you dont run into a bug :) 
-#     elif(x == "add" or x == "back" or x == "city" or x == "street"):
-#         if (not token):
-#             token = validate()
+    elif x == 'back' and nav.showNav():
+        logic.call(x,{
+        'database' : db,
+        'navbar' : nav,
+        'page' : main,
+        'input' : x
+    })
         
-#         if(token):
-#             if (x == "city"):
-#                 a2 = GeoPage('sub-page',["add", "back"], city)
-#                 print(a2)
 
-#             if (x == "street"):
-#                 a2 = GeoPage('sub-page', ["add", "back"], street)
-#                 print(a2)
+    else:
+        logic.call(x,{
+            'database' : db,
+        'navbar' : nav,
+        'page' : sub,
+        'input' : x
+        })
 
-#             if (x == "add"):
-#                 query = input("pls enter a complete query: \n")
-#                 db.addEntity(x,query)
-#                 print(a2)
-            
-#             if (x == "back"):
-#                 token = False
-#                 print(a)
-            
-#             else:
-#                 pass
-#     else:
-#         pass
